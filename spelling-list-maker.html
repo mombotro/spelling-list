@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spelling List Maker</title>
+<style>
+  *{ box-sizing:border-box; }
+  /* ---------- System 7 theme (screen only — print stays a clean sheet) ---------- */
+  body{ margin:0; font-family:"Geneva","Tahoma","Verdana",sans-serif; color:#000;
+    background-color:#8b8b8b;
+    background-image:radial-gradient(#7c7c7c 1px, transparent 1.4px), radial-gradient(#9c9c9c 1px, transparent 1.4px);
+    background-size:4px 4px; background-position:0 0, 2px 2px; }
+  .mac-menubar{ position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:18px;
+    background:#fff; border-bottom:2px solid #000; padding:3px 12px;
+    font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:14px; }
+  .mac-menubar .mb-app{ font-weight:700; }
+  .wrap{ max-width:1000px; margin:0 auto; padding:18px 14px 40px; }
+  h1{ display:none; }
+  .sub{ color:#000; font-size:13px; margin:0 0 14px; background:#dddddd; border:1px solid #000;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; padding:6px 9px; }
+  .card{ background:#dddddd; border:1px solid #000; border-radius:0;
+    box-shadow:2px 2px 0 rgba(0,0,0,.4), inset 1px 1px 0 #fff, inset -1px -1px 0 #999;
+    padding:14px; margin-bottom:16px; }
+  .mac-bar{ display:flex; align-items:center; gap:8px; margin:-14px -14px 12px; padding:3px 7px;
+    border-bottom:1px solid #000;
+    background:repeating-linear-gradient(to bottom,#f4f4f4 0 2px,#b9b9b9 2px 4px);
+    font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:13px; }
+  .mac-bar .mac-title{ flex:1; text-align:center; font-weight:700; }
+  .mac-bar .mac-title span{ background:#dddddd; padding:0 10px; }
+  .mac-close,.mac-zoom{ width:9px; height:9px; background:#000; border-radius:50%; flex:none; }
+  .controls{ display:flex; flex-wrap:wrap; gap:14px 18px; align-items:end; }
+  .field{ display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:700; }
+  .field select, .field textarea{ font:inherit; font-weight:400; font-size:13px; padding:3px 6px; border:1px solid #000; border-radius:0;
+    background:#fff; box-shadow:inset 1px 1px 0 #999; }
+  .field select:disabled{ color:#888; background:#e8e8e8; }
+  .field textarea{ width:100%; min-height:84px; resize:vertical; }
+  .field.wide{ flex:1 1 100%; }
+  .field input[type="checkbox"]{ accent-color:#000; width:14px; height:14px; }
+  .check{ flex-direction:row; align-items:center; gap:7px; padding-bottom:8px; }
+  button{ font-family:"Chicago","Charcoal","Geneva",sans-serif; font-size:13px; font-weight:700; color:#000;
+    background:#eeeeee; border:1px solid #000; border-radius:7px; padding:4px 14px; cursor:pointer;
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #aaaaaa, 1px 1px 0 rgba(0,0,0,.3); }
+  button:active{ background:#555555; color:#fff; }
+  #pdfBtn{ box-shadow:0 0 0 2px #dddddd, 0 0 0 3px #000, inset 1px 1px 0 #fff, inset -1px -1px 0 #aaaaaa; }
+  .hint{ font-size:12.5px; color:#222; margin:10px 0 0; line-height:1.45; }
+  [hidden]{ display:none !important; }
+  /* ---------- the sheet ---------- */
+  #sheetWrap{ overflow:auto; background:#fff; border:1px solid #000; box-shadow:5px 5px 0 rgba(0,0,0,.35); }
+  .mac-bar.sheet-bar{ margin:0; }
+  .sheet{ background:#fff; width:100%; aspect-ratio:11/8.5; container-type:inline-size;
+    padding:3.1cqw 3.9cqw 3.9cqw; margin:0 auto; color:#000; }
+  .sheet-head{ display:flex; justify-content:space-between; align-items:baseline; gap:3cqw;
+    color:#555; font-size:1.55cqw; margin-bottom:2.4cqw; }
+  .sheet-head .nd{ white-space:nowrap; color:#000; }
+  .sheet-head .nd span{ display:inline-block; border-bottom:.27cqw solid #000; height:1em; vertical-align:baseline; }
+  .sheet-head .nd .nm{ width:20cqw; } .sheet-head .nd .dt{ width:10cqw; }
+  .words{ display:grid; grid-auto-flow:column; gap:0 4cqw; align-content:start; }
+  .word{ display:flex; align-items:baseline; gap:1cqw; font-size:2.1cqw; height:4.6cqw; white-space:nowrap; }
+  .word .n{ width:3cqw; text-align:right; color:#555; flex:none; }
+  .word .ln{ flex:1; border-bottom:.27cqw solid #000; height:1.25em; min-width:0; }
+  .word .ans{ font-weight:400; }
+  .word .ans b{ font-weight:700; text-decoration:underline; }
+  @media print{
+    @page{ size:Letter landscape; margin:0; }
+    html,body{ margin:0; padding:0; background:#fff; }
+    .no-print{ display:none !important; }
+    .wrap{ max-width:none; padding:0; }
+    #sheetWrap{ overflow:visible; border:none; box-shadow:none; margin:0; }
+    .sheet{ width:11in !important; height:8.5in !important; margin:0; }
+  }
+</style>
+</head>
+<body>
+<div class="mac-menubar no-print">
+  <span class="mb-app">Spelling List Maker</span>
+</div>
+<div class="wrap">
+  <div class="no-print">
+    <h1>Spelling List Maker</h1>
+    <p class="sub">Build a sequential-style spelling list: each word builds on the one before it. Pick a word family or type your own words. Prints as one US Letter sheet, landscape. Read the words aloud, student writes them. Turn on <em>Show answers</em> for the teacher key.</p>
+
+    <div class="card">
+      <div class="mac-bar"><span class="mac-close"></span><span class="mac-title"><span>Controls</span></span><span class="mac-zoom"></span></div>
+      <div class="controls">
+        <label class="field">Word family
+          <select id="fam"></select>
+        </label>
+        <label class="field">Words
+          <select id="count">
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20" selected>20</option>
+            <option value="25">25</option>
+          </select>
+        </label>
+        <label class="field">Columns
+          <select id="cols">
+            <option value="auto" selected>Auto</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <label class="field check"><input type="checkbox" id="nameLine" checked> Name &amp; date line</label>
+        <label class="field check"><input type="checkbox" id="showAns"> Show answers</label>
+        <button id="genBtn" type="button">🎲 New list</button>
+        <button id="pdfBtn" type="button">⬇ Export as PDF</button>
+        <div class="field wide" id="customBox" hidden>
+          <label for="custom">Your words (one per line, or separated by commas)</label>
+          <textarea id="custom" spellcheck="false" placeholder="at&#10;cat&#10;chat&#10;chatter"></textarea>
+          <label class="check"><input type="checkbox" id="sortLen"> Sort short to long</label>
+        </div>
+      </div>
+      <p class="hint"><strong>New list</strong> picks fresh filler families when a list needs more words than one family has.
+      <strong>Export as PDF:</strong> choose <em>Save as PDF</em>, paper <em>Letter</em>, orientation <em>Landscape</em>, margins <em>None</em>, scale <em>100%</em>.</p>
+    </div>
+  </div>
+
+  <div id="sheetWrap">
+    <div class="mac-bar sheet-bar no-print"><span class="mac-close"></span><span class="mac-title"><span>sheet</span></span><span class="mac-zoom"></span></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-head"><div id="inst"></div><div class="nd" id="nd">Name <span class="nm"></span> &nbsp; Date <span class="dt"></span></div></div>
+      <div class="words" id="words"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* Each family: shared ending (key) + words ordered small to big, so every word
+   builds on the ones before it — the sequential-spelling idea. */
+const FAMILIES = [
+  ["ay",    "day may say pay play stay stray display birthday holiday"],
+  ["ake",   "bake cake lake make take wake shake snake brake mistake"],
+  ["ame",   "came game name same tame frame flame blame shame became"],
+  ["ate",   "gate late date hate mate plate skate state donate relate"],
+  ["ain",   "rain pain gain main chain train brain plain explain complain"],
+  ["ide",   "hide ride side wide slide glide pride inside outside decide"],
+  ["ight",  "light might night right sight tight bright flight slight tonight"],
+  ["ow",    "low row blow flow glow grow slow snow show window"],
+  ["eat",   "eat beat heat meat neat seat wheat cheat treat repeat"],
+  ["ee",    "bee see fee knee tree free three agree degree employee"],
+  ["old",   "old bold cold fold gold hold sold told scold unfold"],
+  ["all",   "all ball call fall hall tall wall small recall football"],
+  ["ell",   "bell fell sell tell well shell smell spell swell farewell"],
+  ["ill",   "bill fill hill kill mill will chill skill spill until"],
+  ["ing",   "king ring sing wing bring sting spring string swing anything"],
+  ["ink",   "link pink sink wink rink blink drink think shrink stink"],
+  ["ock",   "dock lock rock sock clock block knock shock flock unlock"],
+  ["ack",   "back pack sack rack black crack track snack attack backpack"],
+  ["ent",   "bent dent rent sent tent vent went spent event present"],
+  ["est",   "best nest pest rest test vest west chest guest forest"],
+  ["ound",  "found bound hound mound pound round sound ground around playground"],
+  ["ough",  "dough though tough rough cough enough through thorough although throughout"],
+  ["tion",  "nation station vacation location creation relation donation education invitation celebration"]
+].map(([key, w]) => ({ key, words: w.split(" ") }));
+
+const $ = id => document.getElementById(id);
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+/* family menu */
+$("fam").innerHTML =
+  `<option value="mix">Random mix</option>` +
+  FAMILIES.map((f,i) => `<option value="${i}">-${f.key}</option>`).join("") +
+  `<option value="custom">Custom words…</option>`;
+$("fam").value = "0";
+
+/* The current list lives in `list` ({word, key}). Settings that define it call
+   generate(); display-only settings call draw(), which re-renders the SAME words. */
+let list = [];
+
+function generate(){
+  const sel = $("fam").value;
+  const custom = sel === "custom";
+  $("customBox").hidden = !custom;
+  $("count").disabled = custom;
+  list = [];
+
+  if(custom){
+    let words = $("custom").value.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+    words = words.filter((w,i) => words.indexOf(w) === i).slice(0, 36);
+    if($("sortLen").checked) words.sort((a,b) => a.length - b.length);
+    list = words.map(w => ({ word:w, key:"" }));
+  } else {
+    const count = +$("count").value;
+    let fams = shuffle(FAMILIES);
+    if(sel !== "mix"){
+      const first = FAMILIES[+sel];
+      fams = [first, ...fams.filter(f => f !== first)];
+    }
+    for(const f of fams){
+      if(list.length >= count) break;
+      for(const w of f.words){
+        if(list.length >= count) break;
+        list.push({ word:w, key:f.key });
+      }
+    }
+  }
+  draw();
+}
+
+function draw(){
+  const showAns = $("showAns").checked;
+  const n = list.length;
+  const colsSel = $("cols").value;
+  const cols = colsSel !== "auto" ? +colsSel : n <= 20 ? 2 : 3;
+  const rows = Math.max(1, Math.ceil(n / cols));
+
+  $("inst").textContent = showAns ? "Teacher key — read each word aloud, in order." : "Write each word as it is read aloud.";
+  $("nd").hidden = !$("nameLine").checked;
+
+  const box = $("words");
+  box.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  box.style.gridTemplateRows = `repeat(${rows}, auto)`;
+  box.innerHTML = "";
+
+  list.forEach((it, i) => {
+    const el = document.createElement("div");
+    el.className = "word";
+    el.dataset.a = it.word;
+    const num = document.createElement("span");
+    num.className = "n"; num.textContent = (i+1) + ".";
+    const ln = document.createElement("span");
+    ln.className = it.word && showAns ? "ans" : "ln";
+    if(showAns){
+      const k = it.key && it.word.endsWith(it.key) ? it.key : "";
+      ln.append(it.word.slice(0, it.word.length - k.length));
+      if(k){ const b = document.createElement("b"); b.textContent = k; ln.append(b); }
+    }
+    el.append(num, ln);
+    box.appendChild(el);
+  });
+}
+
+$("genBtn").addEventListener("click", generate);
+$("pdfBtn").addEventListener("click", () => {
+  document.title = "Spelling List";
+  window.print();
+});
+for(const id of ["fam","count","custom","sortLen"]) $(id).addEventListener("input", generate);
+for(const id of ["cols","showAns","nameLine"]) $(id).addEventListener("input", draw);
+generate();
+</script>
+</body>
+</html>
