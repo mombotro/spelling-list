@@ -265,7 +265,7 @@ function generate(){
     if(sel === "mix"){
       fams = shuffle(FAMILIES.filter(f => MIX_GROUPS.includes(f.group)));
     } else {
-      /* filler comes from the same group, so a topic list stays on topic */
+      /* filler comes from the same group (other topics, for a topic list) */
       const first = FAMILIES[+sel];
       fams = [first, ...shuffle(FAMILIES.filter(f => f.group === first.group && f !== first))];
     }
