@@ -113,7 +113,7 @@
           <label class="check"><input type="checkbox" id="sortLen"> Sort short to long</label>
         </div>
       </div>
-      <p class="hint"><strong>New list</strong> picks fresh filler families when a list needs more words than one family has.
+      <p class="hint"><strong>New list</strong> picks fresh filler from the same group when a list needs more words than one family has.
       <strong>Export as PDF:</strong> choose <em>Save as PDF</em>, paper <em>Letter</em>, orientation <em>Landscape</em>, margins <em>None</em>, scale <em>100%</em>.</p>
     </div>
   </div>
@@ -129,41 +129,117 @@
 
 <script>
 "use strict";
-/* Each family: shared ending (key) + words ordered small to big, so every word
-   builds on the ones before it — the sequential-spelling idea. */
-const FAMILIES = [
-  ["ay",    "day may say pay play stay stray display birthday holiday"],
-  ["ake",   "bake cake lake make take wake shake snake brake mistake"],
-  ["ame",   "came game name same tame frame flame blame shame became"],
-  ["ate",   "gate late date hate mate plate skate state donate relate"],
-  ["ain",   "rain pain gain main chain train brain plain explain complain"],
-  ["ide",   "hide ride side wide slide glide pride inside outside decide"],
-  ["ight",  "light might night right sight tight bright flight slight tonight"],
-  ["ow",    "low row blow flow glow grow slow snow show window"],
-  ["eat",   "eat beat heat meat neat seat wheat cheat treat repeat"],
-  ["ee",    "bee see fee knee tree free three agree degree employee"],
-  ["old",   "old bold cold fold gold hold sold told scold unfold"],
-  ["all",   "all ball call fall hall tall wall small recall football"],
-  ["ell",   "bell fell sell tell well shell smell spell swell farewell"],
-  ["ill",   "bill fill hill kill mill will chill skill spill until"],
-  ["ing",   "king ring sing wing bring sting spring string swing anything"],
-  ["ink",   "link pink sink wink rink blink drink think shrink stink"],
-  ["ock",   "dock lock rock sock clock block knock shock flock unlock"],
-  ["ack",   "back pack sack rack black crack track snack attack backpack"],
-  ["ent",   "bent dent rent sent tent vent went spent event present"],
-  ["est",   "best nest pest rest test vest west chest guest forest"],
-  ["ound",  "found bound hound mound pound round sound ground around playground"],
-  ["ough",  "dough though tough rough cough enough through thorough although throughout"],
-  ["tion",  "nation station vacation location creation relation donation education invitation celebration"]
-].map(([key, w]) => ({ key, words: w.split(" ") }));
+/* Each family: [group, label, shared ending to highlight ("" for none], words].
+   Words run small to big, so every word builds on the ones before it — the
+   sequential-spelling idea. Keep every word kid-safe. */
+const RAW = [
+  /* ---- short vowels ---- */
+  ["Short vowels","-at","at","at bat cat hat mat rat sat chat flat that"],
+  ["Short vowels","-an","an","an can fan man pan ran tan van than plan clan"],
+  ["Short vowels","-ap","ap","cap gap lap map nap tap clap flap snap strap"],
+  ["Short vowels","-ash","ash","cash dash rash bash flash crash trash splash"],
+  ["Short vowels","-and","and","and band hand land sand stand brand grand"],
+  ["Short vowels","-amp","amp","camp damp lamp ramp stamp clamp"],
+  ["Short vowels","-ank","ank","bank sank tank rank thank blank drank plank"],
+  ["Short vowels","-ack","ack","back pack sack rack black track snack stack quack backpack"],
+  ["Short vowels","-ed","ed","bed fed red led shed sled fled sped"],
+  ["Short vowels","-ell","ell","bell fell sell tell well shell smell spell swell farewell"],
+  ["Short vowels","-ent","ent","bent dent rent sent tent vent went spent event present"],
+  ["Short vowels","-est","est","best nest pest rest test vest west chest guest forest"],
+  ["Short vowels","-ip","ip","dip hip lip rip sip tip zip chip ship trip"],
+  ["Short vowels","-ill","ill","bill fill hill mill pill will chill skill spill still"],
+  ["Short vowels","-ing","ing","king ring sing wing bring sting spring string swing anything"],
+  ["Short vowels","-ink","ink","link pink sink wink rink blink drink think shrink brink"],
+  ["Short vowels","-ish","ish","dish fish wish swish selfish foolish"],
+  ["Short vowels","-op","op","hop mop pop top chop drop flop shop stop crop"],
+  ["Short vowels","-ock","ock","dock lock rock sock clock block knock shock flock unlock"],
+  ["Short vowels","-ug","ug","bug hug jug mug rug tug plug shrug snug slug"],
+  ["Short vowels","-uck","uck","duck luck tuck buck stuck truck struck pluck"],
+  ["Short vowels","-ump","ump","bump dump jump lump pump stump"],
+  ["Short vowels","-un","un","bun fun run sun spun begun"],
+  ["Short vowels","-ut","ut","but cut hut nut rut shut"],
+  ["Short vowels","-ung","ung","hung lung rung sung stung swung sprung"],
+  ["Short vowels","-ong","ong","long song strong along belong among"],
+  /* ---- long vowels ---- */
+  ["Long vowels","-ay","ay","day may say pay play stay stray display birthday holiday"],
+  ["Long vowels","-ail","ail","fail hail mail nail pail rail sail tail snail trail"],
+  ["Long vowels","-ain","ain","rain gain main drain chain train brain plain explain complain"],
+  ["Long vowels","-ake","ake","bake cake lake make take wake shake snake brake mistake"],
+  ["Long vowels","-ame","ame","came game name same tame fame frame flame became"],
+  ["Long vowels","-ate","ate","gate late date mate plate skate state crate donate relate"],
+  ["Long vowels","-ace","ace","face lace pace race place space grace"],
+  ["Long vowels","-ice","ice","dice mice nice rice price slice twice advice"],
+  ["Long vowels","-ide","ide","hide ride side wide slide glide pride inside outside decide"],
+  ["Long vowels","-ine","ine","dine fine line mine nine pine shine divine"],
+  ["Long vowels","-ight","ight","light might night right sight tight bright flight slight tonight"],
+  ["Long vowels","-oat","oat","boat coat goat moat float throat"],
+  ["Long vowels","-oke","oke","joke poke woke smoke spoke broke stroke"],
+  ["Long vowels","-old","old","old bold cold fold gold hold sold told mold unfold"],
+  ["Long vowels","-ose","ose","hose nose rose close those chose suppose"],
+  ["Long vowels","-ow (snow)","ow","low row blow flow glow grow slow snow show window"],
+  ["Long vowels","-eat","eat","eat beat heat meat neat seat wheat cheat treat repeat"],
+  ["Long vowels","-ee","ee","bee see fee knee tree free three agree degree employee"],
+  ["Long vowels","-eep","eep","deep keep peep sleep sheep sweep creep steep"],
+  ["Long vowels","-ear","ear","ear dear fear gear hear near year clear appear"],
+  ["Long vowels","-ue","ue","due cue hue blue clue glue"],
+  ["Long vowels","-ew","ew","new few dew grew blew flew chew drew threw"],
+  ["Long vowels","-oon","oon","moon noon soon spoon balloon raccoon afternoon"],
+  ["Long vowels","-ool","ool","cool pool tool fool spool stool school"],
+  /* ---- other patterns ---- */
+  ["Other patterns","-ar","ar","bar car far jar tar star scar guitar"],
+  ["Other patterns","-ark","ark","bark dark park mark spark shark"],
+  ["Other patterns","-ort","ort","fort port sort short sport report support"],
+  ["Other patterns","-orn","orn","born corn horn torn worn thorn acorn"],
+  ["Other patterns","-urn","urn","burn turn churn return"],
+  ["Other patterns","-aw","aw","saw paw law jaw raw claw draw straw"],
+  ["Other patterns","-oil","oil","oil boil coil foil soil spoil"],
+  ["Other patterns","-oy","oy","boy joy toy soy enjoy cowboy"],
+  ["Other patterns","-out","out","out pout shout scout spout trout about without"],
+  ["Other patterns","-own","own","down gown town brown clown crown frown"],
+  ["Other patterns","-all","all","all ball call fall hall tall wall small recall football"],
+  ["Other patterns","-able","able","able cable fable table stable"],
+  ["Other patterns","-ough","ough","dough though tough rough cough enough through thorough although throughout"],
+  ["Other patterns","-ture","ture","future nature picture capture creature adventure furniture"],
+  ["Other patterns","-tion","tion","nation station vacation location creation relation donation education invitation celebration"],
+  /* ---- word builders (prefix / suffix / compound) ---- */
+  ["Word builders","help + endings","","help helps helped helping helpful helpless"],
+  ["Word builders","play + endings","","play plays played player playing playful replay"],
+  ["Word builders","walk + endings","","walk walks walked walker walking"],
+  ["Word builders","care + endings","","care cared caring careful careless carefully"],
+  ["Word builders","color + endings","","color colors colored colorful colorless"],
+  ["Word builders","friend + endings","","friend friends friendly friendship unfriendly"],
+  ["Word builders","kind + endings","","kind kinder kindest kindly kindness unkind"],
+  ["Word builders","happy + endings","","happy happier happiest happily happiness unhappy"],
+  ["Word builders","-er and -est","","tall taller tallest fast faster fastest big bigger biggest"],
+  ["Word builders","un- words","","undo unfair unkind unlock unsafe untie unwrap unfold unhappy"],
+  ["Word builders","re- words","","redo reuse retell reread rewrite replay rebuild restart remember"],
+  ["Word builders","Compound words","","sunset rainbow cupcake notebook sandbox snowman football birthday butterfly playground"],
+  ["Word builders","Tricky words","","said was were what when they where would could because friend"],
+  /* ---- topic words ---- */
+  ["Topic words","Colors","","red blue pink gray green black brown white yellow orange purple"],
+  ["Topic words","Numbers","","one two six ten four five nine three seven eight eleven twelve"],
+  ["Topic words","Animals","","cat dog pig cow frog fish bird duck horse rabbit turtle monkey elephant"],
+  ["Topic words","Weather","","sun rain wind snow cloud storm sunny windy cloudy rainy thunder rainbow"],
+  ["Topic words","Food","","egg pie milk rice bread apple pizza cheese butter banana carrot cookie pancake"],
+  ["Topic words","Family & home","","mom dad baby home sister brother family cousin grandma grandpa kitchen bedroom"],
+  ["Topic words","School","","book desk pen pencil paper teacher student library recess lesson reading writing"],
+  ["Topic words","Body","","arm leg ear eye nose hand foot head knee elbow finger shoulder"],
+  ["Topic words","Nature","","tree leaf lake rock hill river flower forest garden mountain meadow"],
+  ["Topic words","Days & months","","Monday Tuesday Friday Sunday Saturday Thursday Wednesday January March April"]
+];
+const FAMILIES = RAW.map(([group, label, key, w]) => ({ group, label, key, words: w.split(" ") }));
+const GROUPS = [...new Set(FAMILIES.map(f => f.group))];
+const MIX_GROUPS = ["Short vowels","Long vowels","Other patterns"];
 
 const $ = id => document.getElementById(id);
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
 /* family menu */
 $("fam").innerHTML =
-  `<option value="mix">Random mix</option>` +
-  FAMILIES.map((f,i) => `<option value="${i}">-${f.key}</option>`).join("") +
+  `<option value="mix">Random mix of word patterns</option>` +
+  GROUPS.map(g => `<optgroup label="${g}">` +
+    FAMILIES.map((f,i) => f.group === g ? `<option value="${i}">${f.label}</option>` : "").join("") +
+    `</optgroup>`).join("") +
   `<option value="custom">Custom words…</option>`;
 $("fam").value = "0";
 
@@ -185,10 +261,13 @@ function generate(){
     list = words.map(w => ({ word:w, key:"" }));
   } else {
     const count = +$("count").value;
-    let fams = shuffle(FAMILIES);
-    if(sel !== "mix"){
+    let fams;
+    if(sel === "mix"){
+      fams = shuffle(FAMILIES.filter(f => MIX_GROUPS.includes(f.group)));
+    } else {
+      /* filler comes from the same group, so a topic list stays on topic */
       const first = FAMILIES[+sel];
-      fams = [first, ...fams.filter(f => f !== first)];
+      fams = [first, ...shuffle(FAMILIES.filter(f => f.group === first.group && f !== first))];
     }
     for(const f of fams){
       if(list.length >= count) break;
